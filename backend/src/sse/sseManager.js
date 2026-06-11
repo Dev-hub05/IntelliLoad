@@ -1,70 +1,80 @@
-/**
- * Server-Sent Events (SSE) Manager
- * Manages active browser client connections listening to live test run streams.
- */
-
 class SSEManager {
   constructor() {
-    // Maps testRunId -> Set of express Response objects
-    this.clients = new Map();
+    this.clients = new Map(); // testId -> Set of client response objects
   }
 
   /**
-   * Registers a client connection to a test run metrics stream.
-   * @param {string} testRunId - The unique test run ID
-   * @param {Object} res - Express Response object
+   * Register a new client for a test stream
+   * @param {string} testId 
+   * @param {Object} req - Express request
+   * @param {Object} res - Express response
    */
-  registerClient(testRunId, res) {
-    if (!this.clients.has(testRunId)) {
-      this.clients.set(testRunId, new Set());
+  register(testId, req, res) {
+    // Set headers for SSE
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*'
+    });
+
+    // Send initial ping/keep-alive comment
+    res.write(': ping\n\n');
+
+    if (!this.clients.has(testId)) {
+      this.clients.set(testId, new Set());
     }
     
-    const clientSet = this.clients.get(testRunId);
-    clientSet.add(res);
+    this.clients.get(testId).add(res);
 
-    console.log(`SSE client connected to stream: ${testRunId}. Total active: ${clientSet.size}`);
-
-    // Clean up when client disconnects
-    res.on('close', () => {
-      clientSet.delete(res);
-      console.log(`SSE client disconnected from stream: ${testRunId}. Remaining active: ${clientSet.size}`);
-      if (clientSet.size === 0) {
-        this.clients.delete(testRunId);
+    // Remove client on connection close
+    req.on('close', () => {
+      const testClients = this.clients.get(testId);
+      if (testClients) {
+        testClients.delete(res);
+        if (testClients.size === 0) {
+          this.clients.delete(testId);
+        }
       }
     });
   }
 
   /**
-   * Broadcasts a JSON message to all registered clients for a test run.
-   * @param {string} testRunId - Unique test run ID
-   * @param {string} event - Event name (e.g. 'metrics', 'completed', 'status')
-   * @param {Object} data - Payload data
+   * Broadcast a metric snapshot to all connected clients for a test
+   * @param {string} testId 
+   * @param {Object} data - Metrics snapshot to broadcast
    */
-  broadcast(testRunId, event, data) {
-    const clientSet = this.clients.get(testRunId);
-    if (!clientSet || clientSet.size === 0) {
-      return;
-    }
+  broadcast(testId, data) {
+    const testClients = this.clients.get(testId);
+    if (!testClients || testClients.size === 0) return;
 
-    const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-
-    clientSet.forEach(res => {
+    const payload = `data: ${JSON.stringify(data)}\n\n`;
+    
+    for (const client of testClients) {
       try {
-        res.write(payload);
+        client.write(payload);
       } catch (err) {
-        console.error(`Error writing to SSE stream ${testRunId}:`, err.message);
+        console.error(`Error sending SSE payload to client for test ${testId}:`, err.message);
       }
-    });
+    }
   }
 
   /**
-   * Get active connection counts for a given test run.
+   * Close all active client connections for a test
+   * @param {string} testId 
    */
-  getActiveClientCount(testRunId) {
-    const clientSet = this.clients.get(testRunId);
-    return clientSet ? clientSet.size : 0;
+  closeConnections(testId) {
+    const testClients = this.clients.get(testId);
+    if (!testClients) return;
+
+    for (const client of testClients) {
+      try {
+        client.end();
+      } catch (err) {}
+    }
+    
+    this.clients.delete(testId);
   }
 }
 
-// Export single shared instance
 module.exports = new SSEManager();

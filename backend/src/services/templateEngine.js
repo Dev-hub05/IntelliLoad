@@ -1,46 +1,32 @@
 const crypto = require('crypto');
 
-// Predefined set of names for randomName variable
+// A list of common random names to select from
 const NAMES = [
-  'Alice Smith', 'Bob Jones', 'Charlie Brown', 'Diana Prince', 'Evan Wright',
+  'Alice Johnson', 'Bob Smith', 'Charlie Brown', 'Diana Prince', 'Evan Wright',
   'Fiona Gallagher', 'George Clark', 'Hannah Abbott', 'Ian Malcolm', 'Julia Roberts',
-  'Kevin Bacon', 'Laura Croft', 'Michael Scott', 'Natalie Portman', 'Oliver Queen',
+  'Kevin Bacon', 'Laura Croft', 'Michael Scott', 'Natalie Portman', 'Oliver Twist',
   'Penelope Cruz', 'Quentin Tarantino', 'Rachel Green', 'Steve Rogers', 'Tony Stark'
 ];
 
-/**
- * Generates a random name from a static collection.
- */
 function getRandomName() {
   return NAMES[Math.floor(Math.random() * NAMES.length)];
 }
 
 /**
- * Replaces template variables in a string/JSON.
- * Supported variables:
- * - {{randomId}}       : 8-char hex string
- * - {{uuid}}           : Standard UUID v4
- * - {{timestamp}}      : Current Unix timestamp (ms)
- * - {{isoDate}}        : ISO 8601 string
- * - {{randomInt}}      : Random integer between 0 and 99999
- * - {{randomEmail}}    : Random email e.g. user_abc123@test.com
- * - {{randomName}}     : Random name from names list
+ * Replaces placeholders like {{randomId}}, {{uuid}}, {{timestamp}}, {{isoDate}},
+ * {{randomInt}}, {{randomEmail}}, {{randomName}}, and any custom runtime variables
+ * in a template string (usually a request body).
  * 
- * Also supports runtime variables passed via customContext (e.g. from response extraction)
- * - {{customVar}}      : Replaced by customContext['customVar']
- * 
- * @param {string} templateStr - String containing template variables
- * @param {Object} [customContext={}] - Key-value pair object of custom extracted variables
- * @returns {string} Fully expanded string
+ * @param {string} template - The string containing placeholders
+ * @param {Object} variables - Extracted variables from previous collection requests
+ * @returns {string} The expanded string
  */
-function expandTemplate(templateStr, customContext = {}) {
-  if (typeof templateStr !== 'string') {
-    return templateStr;
-  }
+function expandTemplate(template, variables = {}) {
+  if (!template || typeof template !== 'string') return '';
 
-  let result = templateStr;
+  let result = template;
 
-  // 1. Process standard dynamic variables
+  // 1. First, replace built-in system variables
   result = result.replace(/\{\{randomId\}\}/g, () => crypto.randomBytes(4).toString('hex'));
   result = result.replace(/\{\{uuid\}\}/g, () => crypto.randomUUID());
   result = result.replace(/\{\{timestamp\}\}/g, () => Date.now().toString());
@@ -49,9 +35,9 @@ function expandTemplate(templateStr, customContext = {}) {
   result = result.replace(/\{\{randomEmail\}\}/g, () => `user_${crypto.randomBytes(3).toString('hex')}@test.com`);
   result = result.replace(/\{\{randomName\}\}/g, () => getRandomName());
 
-  // 2. Process custom context variables (if provided)
-  if (customContext && Object.keys(customContext).length > 0) {
-    for (const [key, value] of Object.entries(customContext)) {
+  // 2. Replace runtime/custom variables from context (e.g. {{authToken}})
+  if (variables && typeof variables === 'object') {
+    for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
       result = result.replace(regex, value !== undefined && value !== null ? String(value) : '');
     }
@@ -61,6 +47,5 @@ function expandTemplate(templateStr, customContext = {}) {
 }
 
 module.exports = {
-  expandTemplate,
-  getRandomName
+  expandTemplate
 };

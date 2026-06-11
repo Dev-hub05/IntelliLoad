@@ -2,142 +2,118 @@ const { Point, writeApi } = require('../config/influx');
 const { cacheMetrics, setTestState } = require('../config/redis');
 const sseManager = require('../sse/sseManager');
 
+// Keep a simple runtime buffer in memory for quick calculations
 class MetricsCollector {
   constructor() {
-    this.buffer = new Map(); // Maps testRunId -> array of raw responses
+    this.testBuffers = new Map(); // testId -> array of responses in the current second
   }
 
   /**
-   * Initialize a new metrics buffer for a running test.
+   * Initialize collector for a new test run
+   * @param {string} testId 
    */
-  initTestRun(testRunId) {
-    this.buffer.set(testRunId, []);
+  initTest(testId) {
+    this.testBuffers.set(testId, []);
   }
 
   /**
-   * Tracks a single HTTP response transaction.
-   * Called on every completed request.
+   * Record an individual request response
+   * @param {Object} data - Contains testId, statusCode, responseTime, bytes, timestamp
    */
-  recordResponse(testRunId, { statusCode, bytes, responseTime, endpointName = 'default' }) {
-    const runBuffer = this.buffer.get(testRunId);
-    if (!runBuffer) return;
-
-    runBuffer.push({
-      statusCode,
-      bytes,
-      responseTime,
-      endpointName,
-      timestamp: Date.now()
-    });
+  recordResponse(data) {
+    const { testId } = data;
+    const buffer = this.testBuffers.get(testId);
+    if (buffer) {
+      buffer.push(data);
+    }
   }
 
   /**
-   * Aggregates and stores 1-second interval metrics.
-   * Triggered on every 'tick' event from the load generator.
+   * Process a 1-second interval tick and compile snapshot metrics
+   * @param {string} testId 
+   * @param {Object} tickStats - Aggregated stats from load generator
    */
-  async processTick(testRunId, tickData, activeConnections) {
-    const runBuffer = this.buffer.get(testRunId) || [];
-    // Reset buffer for the next second interval
-    this.buffer.set(testRunId, []);
+  async processTick(testId, tickStats) {
+    const buffer = this.testBuffers.get(testId) || [];
+    this.testBuffers.set(testId, []); // Flush buffer for next second
 
-    const totalRequests = runBuffer.length;
-    let successCount = 0;
-    let errorCount = 0;
-    let sumLatency = 0;
-    let maxLatency = 0;
-    let latencies = [];
-
-    runBuffer.forEach(req => {
-      latencies.push(req.responseTime);
-      sumLatency += req.responseTime;
-      if (req.responseTime > maxLatency) maxLatency = req.responseTime;
-
-      // Classify successes vs errors
-      if (req.statusCode >= 200 && req.statusCode < 400) {
-        successCount++;
-      } else {
-        errorCount++;
-      }
-    });
-
-    // Sort latencies for percentiles
-    latencies.sort((a, b) => a - b);
-    const getPercentile = (p) => {
-      if (latencies.length === 0) return 0;
-      const index = Math.ceil(latencies.length * p) - 1;
-      return latencies[index];
-    };
-
-    const avgLatency = totalRequests > 0 ? Math.round(sumLatency / totalRequests) : 0;
-    const p50Latency = getPercentile(0.5);
-    const p95Latency = getPercentile(0.95);
-    const p99Latency = getPercentile(0.99);
-    const errorRate = totalRequests > 0 ? parseFloat(((errorCount / totalRequests) * 100).toFixed(2)) : 0.0;
-    const throughput = tickData.requests ? tickData.requests.average : totalRequests; // default fallback to current second's throughput
+    // Calculate aggregated metrics from buffer if needed, otherwise use tickStats
+    const totalCount = tickStats.totalRequests;
+    const errors = tickStats.errors + tickStats.non2xx;
+    const successCount = Math.max(0, buffer.length - errors); // simple estimation
+    const errorRate = buffer.length > 0 ? (errors / buffer.length) * 100 : 0;
 
     const snapshot = {
-      testRunId,
-      timestamp: new Date().toISOString(),
-      avgLatency,
-      p50Latency,
-      p95Latency,
-      p99Latency,
-      maxLatency,
-      totalRequests,
-      successCount,
-      errorCount,
-      throughput,
-      errorRate,
-      activeUsers: activeConnections
+      testId,
+      timestamp: Date.now(),
+      activeUsers: tickStats.activeUsers,
+      avgLatency: tickStats.avgLatency,
+      p50Latency: tickStats.p50Latency,
+      p95Latency: tickStats.p95Latency,
+      p99Latency: tickStats.p99Latency,
+      maxLatency: tickStats.maxLatency,
+      throughput: tickStats.throughput, // requests per sec
+      totalRequests: totalCount,
+      successCount: successCount,
+      errorCount: errors,
+      errorRate: parseFloat(errorRate.toFixed(2))
     };
 
-    // 1. Write Metrics snapshot to InfluxDB (if connected)
+    // 1. Write metric point to InfluxDB (if initialized)
     if (writeApi) {
       try {
         const point = new Point('request_metrics')
-          .tag('testRunId', testRunId)
-          .floatField('avg_latency', avgLatency)
-          .floatField('p50_latency', p50Latency)
-          .floatField('p95_latency', p95Latency)
-          .floatField('p99_latency', p99Latency)
-          .floatField('max_latency', maxLatency)
-          .intField('total_requests', totalRequests)
-          .intField('success_count', successCount)
-          .intField('error_count', errorCount)
-          .floatField('throughput', throughput)
-          .floatField('error_rate', errorRate)
-          .intField('active_users', activeConnections);
+          .tag('testRunId', testId)
+          .floatField('avg_latency', snapshot.avgLatency)
+          .floatField('p50_latency', snapshot.p50Latency)
+          .floatField('p95_latency', snapshot.p95Latency)
+          .floatField('p99_latency', snapshot.p99Latency)
+          .floatField('max_latency', snapshot.maxLatency)
+          .floatField('throughput', snapshot.throughput)
+          .floatField('error_rate', snapshot.errorRate)
+          .intField('total_requests', snapshot.totalRequests)
+          .intField('success_count', snapshot.successCount)
+          .intField('error_count', snapshot.errorCount)
+          .intField('active_users', snapshot.activeUsers)
+          .timestamp(new Date(snapshot.timestamp));
 
         writeApi.writePoint(point);
+        // Flush changes to database buffer
+        await writeApi.flush();
       } catch (err) {
-        console.error(`Error writing point to InfluxDB for ${testRunId}:`, err.message);
+        console.error(`Error writing metrics to InfluxDB for test ${testId}:`, err.message);
       }
     }
 
-    // 2. Cache latest snapshot in Redis for fast SSE pickups
+    // 2. Cache latest snapshot in Redis
     try {
-      await cacheMetrics(testRunId, snapshot);
-      await setTestState(testRunId, {
-        activeUsers: activeConnections,
-        currentLatency: avgLatency,
-        currentThroughput: throughput,
-        errorRate
+      await cacheMetrics(testId, snapshot);
+      await setTestState(testId, {
+        status: 'running',
+        activeUsers: snapshot.activeUsers,
+        currentLatency: snapshot.avgLatency,
+        errorRate: snapshot.errorRate,
+        throughput: snapshot.throughput
       });
     } catch (err) {
-      console.error(`Error writing state to Redis for ${testRunId}:`, err.message);
+      console.error(`Error writing metrics to Redis cache for test ${testId}:`, err.message);
     }
 
-    // 3. Push snapshot to Server-Sent Events browser clients
-    sseManager.broadcast(testRunId, 'metrics', snapshot);
+    // 3. Broadcast to all active clients listening via SSE
+    sseManager.broadcast(testId, snapshot);
 
-    return snapshot;
+    // 4. Trigger background ML prediction/anomaly check job (every 5 seconds)
+    // We will hook this to the queues in Phase 4 / ML integration.
+    // For now we just compile and stream it.
   }
 
   /**
-   * Finalize and clean up buffers after completion of a test run.
+   * Finalize metric collection and cleanup buffers
+   * @param {string} testId 
    */
-  cleanup(testRunId) {
-    this.buffer.delete(testRunId);
+  cleanup(testId) {
+    this.testBuffers.delete(testId);
+    sseManager.closeConnections(testId);
   }
 }
 

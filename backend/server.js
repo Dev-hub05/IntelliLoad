@@ -17,13 +17,23 @@ connectDB();
 require('./src/config/influx');
 require('./src/config/redis');
 
+// Routers
+const testRoutes = require('./src/routes/testRoutes');
+const collectionRoutes = require('./src/routes/collectionRoutes');
+const mlRoutes = require('./src/routes/mlRoutes');
+
+// Mount Routes
+app.use('/api/tests', testRoutes);
+app.use('/api/collections', collectionRoutes);
+app.use('/api/ml', mlRoutes);
+
 // Basic Health Check Route
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date(),
     services: {
-      mongodb: 'connected', // connection is async, full check can be added later
+      mongodb: 'connected', 
       redis: 'ready'
     }
   });
