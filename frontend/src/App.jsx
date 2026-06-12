@@ -4,27 +4,10 @@ import Sidebar from './components/Sidebar/Sidebar';
 import { Settings, FolderGit2, Flame, Layers, BarChart3 } from 'lucide-react';
 import './App.css';
 
+import Dashboard from './components/Dashboard/Dashboard';
+import ConfigPanel from './components/ConfigPanel/ConfigPanel';
+
 // Placeholder Pages (Real components will replace these in subsequent days)
-const DashboardPlaceholder = () => (
-  <div className="mock-page">
-    <div className="glass-panel mock-card animate-fade-in">
-      <BarChart3 size={48} className="mock-icon" />
-      <h2>Live Metrics Dashboard</h2>
-      <p style={{ color: 'var(--text-secondary)' }}>Live-updating charts and intelligent anomaly feeds. (Phase 3)</p>
-    </div>
-  </div>
-);
-
-const ConfigurePlaceholder = () => (
-  <div className="mock-page">
-    <div className="glass-panel mock-card animate-fade-in">
-      <Settings size={48} className="mock-icon" />
-      <h2>Test Configuration</h2>
-      <p style={{ color: 'var(--text-secondary)' }}>Design single-endpoint target profiles with variables. (Phase 3)</p>
-    </div>
-  </div>
-);
-
 const CollectionsPlaceholder = () => (
   <div className="mock-page">
     <div className="glass-panel mock-card animate-fade-in">
@@ -62,8 +45,8 @@ function App() {
         <Sidebar />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<DashboardPlaceholder />} />
-            <Route path="/configure" element={<ConfigurePlaceholder />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/configure" element={<ConfigPanel />} />
             <Route path="/collections" element={<CollectionsPlaceholder />} />
             <Route path="/autonomous" element={<AutonomousPlaceholder />} />
             <Route path="/compare" element={<ComparePlaceholder />} />
