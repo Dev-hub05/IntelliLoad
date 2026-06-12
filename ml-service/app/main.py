@@ -17,10 +17,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.routes import anomaly
+from app.routes import anomaly, prediction, root_cause, advisor
 
 # Register Routers
 app.include_router(anomaly.router)
+app.include_router(prediction.router)
+app.include_router(root_cause.router)
+app.include_router(advisor.router)
 
 @app.get("/ml/health")
 async def health_check():
