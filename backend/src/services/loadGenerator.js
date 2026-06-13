@@ -24,6 +24,14 @@ class LoadGeneratorService extends EventEmitter {
     const { targetUrl, method, headers, body, apiKey, config } = testRun;
     const { connections, duration, pattern } = config;
 
+    // Handle Autonomous pattern delegation
+    if (pattern === 'autonomous') {
+      const autonomousRunner = require('./autonomousRunner');
+      const emitter = autonomousRunner.startAutonomousTest(testRun);
+      this.activeTests.set(testId, { type: 'autonomous', runner: autonomousRunner });
+      return emitter;
+    }
+
     // Process headers and inject API Key if present
     const testHeaders = { ...headers };
     if (apiKey) {
@@ -135,13 +143,16 @@ class LoadGeneratorService extends EventEmitter {
    * @param {string} testId 
    */
   stopTest(testId) {
-    const instance = this.activeTests.get(testId);
-    if (!instance) {
+    const activeTest = this.activeTests.get(testId);
+    if (!activeTest) {
       return false;
     }
     
-    // Stop autocannon instance
-    instance.stop();
+    if (activeTest.type === 'autonomous') {
+      activeTest.runner.stopAutonomousTest(testId);
+    } else {
+      activeTest.stop(); // standard autocannon instance
+    }
     this.activeTests.delete(testId);
     return true;
   }

@@ -7,17 +7,7 @@ import './App.css';
 import Dashboard from './components/Dashboard/Dashboard';
 import ConfigPanel from './components/ConfigPanel/ConfigPanel';
 import Collections from './components/Collections/Collections';
-
-// Placeholder Pages (Real components will replace these in subsequent days)
-const AutonomousPlaceholder = () => (
-  <div className="mock-page">
-    <div className="glass-panel mock-card animate-fade-in">
-      <Flame size={48} className="mock-icon" />
-      <h2>Autonomous Stress Testing</h2>
-      <p style={{ color: 'var(--text-secondary)' }}>Automated progressive load ramping and failure discovery. (Phase 5)</p>
-    </div>
-  </div>
-);
+import AutonomousStress from './components/TestRunner/AutonomousStress';
 
 const ComparePlaceholder = () => (
   <div className="mock-page">
@@ -39,7 +29,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/configure" element={<ConfigPanel />} />
             <Route path="/collections" element={<Collections />} />
-            <Route path="/autonomous" element={<AutonomousPlaceholder />} />
+            <Route path="/autonomous" element={<AutonomousStress />} />
             <Route path="/compare" element={<ComparePlaceholder />} />
           </Routes>
         </main>
