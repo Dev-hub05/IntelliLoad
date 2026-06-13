@@ -9,15 +9,7 @@ import ConfigPanel from './components/ConfigPanel/ConfigPanel';
 import Collections from './components/Collections/Collections';
 import AutonomousStress from './components/TestRunner/AutonomousStress';
 
-const ComparePlaceholder = () => (
-  <div className="mock-page">
-    <div className="glass-panel mock-card animate-fade-in">
-      <Layers size={48} className="mock-icon" />
-      <h2>Compare Runs</h2>
-      <p style={{ color: 'var(--text-secondary)' }}>Side-by-side performance comparison metrics. (Phase 5)</p>
-    </div>
-  </div>
-);
+import CompareRuns from './components/Results/CompareRuns';
 
 function App() {
   return (
@@ -30,7 +22,7 @@ function App() {
             <Route path="/configure" element={<ConfigPanel />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/autonomous" element={<AutonomousStress />} />
-            <Route path="/compare" element={<ComparePlaceholder />} />
+            <Route path="/compare" element={<CompareRuns />} />
           </Routes>
         </main>
       </div>
