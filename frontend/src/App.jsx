@@ -6,18 +6,9 @@ import './App.css';
 
 import Dashboard from './components/Dashboard/Dashboard';
 import ConfigPanel from './components/ConfigPanel/ConfigPanel';
+import Collections from './components/Collections/Collections';
 
 // Placeholder Pages (Real components will replace these in subsequent days)
-const CollectionsPlaceholder = () => (
-  <div className="mock-page">
-    <div className="glass-panel mock-card animate-fade-in">
-      <FolderGit2 size={48} className="mock-icon" />
-      <h2>API Collections</h2>
-      <p style={{ color: 'var(--text-secondary)' }}>Chained request pipelines and extraction rules. (Phase 5)</p>
-    </div>
-  </div>
-);
-
 const AutonomousPlaceholder = () => (
   <div className="mock-page">
     <div className="glass-panel mock-card animate-fade-in">
@@ -47,7 +38,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/configure" element={<ConfigPanel />} />
-            <Route path="/collections" element={<CollectionsPlaceholder />} />
+            <Route path="/collections" element={<Collections />} />
             <Route path="/autonomous" element={<AutonomousPlaceholder />} />
             <Route path="/compare" element={<ComparePlaceholder />} />
           </Routes>
