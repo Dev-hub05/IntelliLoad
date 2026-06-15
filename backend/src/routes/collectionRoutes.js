@@ -230,8 +230,14 @@ router.post('/:id/run', async (req, res) => {
         if (run) {
           run.status = 'completed';
           run.completedAt = new Date();
-          // Summary statistics are compiled during collection ticks
           await run.save();
+
+          const { enqueueAnalysis } = require('../queues/mlQueue');
+          const metricsCollector = require('../services/metricsCollector');
+          await enqueueAnalysis(testRunId, 'run-all-analysis').catch(err => {
+            console.error('Failed to trigger background ML analysis for collection:', err.message);
+            metricsCollector.cleanup(testRunId);
+          });
         }
       })
       .catch(async (err) => {
@@ -241,6 +247,8 @@ router.post('/:id/run', async (req, res) => {
           run.status = 'failed';
           run.completedAt = new Date();
           await run.save();
+          const metricsCollector = require('../services/metricsCollector');
+          metricsCollector.cleanup(testRunId);
         }
       });
 

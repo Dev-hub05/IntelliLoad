@@ -41,6 +41,9 @@ try {
           return await mlClient.generateReport(testRunId);
         case 'root-cause-score':
           return await mlClient.scoreRootCause(testRunId);
+        case 'run-all-analysis':
+          const mlAnalyzer = require('../services/mlAnalyzer');
+          return await mlAnalyzer.runMlAnalysis(testRunId);
         default:
           throw new Error(`Unknown job type: ${job.name}`);
       }

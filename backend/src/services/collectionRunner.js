@@ -105,8 +105,7 @@ class CollectionRunnerService {
     
     clearInterval(statsInterval);
 
-    // Save overall summary
-    metricsCollector.cleanup(testRunId);
+    // Save overall summary (delegated to background ML analyzer)
     console.log(`Collection Load Engine execution complete for run: ${testRunId}`);
   }
 

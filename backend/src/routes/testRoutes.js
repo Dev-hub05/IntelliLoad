@@ -68,7 +68,11 @@ router.post('/', async (req, res) => {
         await run.save();
       }
 
-      metricsCollector.cleanup(testId);
+      const { enqueueAnalysis } = require('../queues/mlQueue');
+      await enqueueAnalysis(testId, 'run-all-analysis').catch(err => {
+        console.error('Failed to trigger background ML analysis:', err.message);
+        metricsCollector.cleanup(testId);
+      });
       console.log(`Test ${testId} complete. Summary saved.`);
     });
 

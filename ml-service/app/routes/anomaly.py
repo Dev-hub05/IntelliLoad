@@ -59,3 +59,45 @@ async def detect_anomalies(request: DetectRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/detect-batch")
+async def detect_batch_anomalies(request: TrainRequest):
+    import numpy as np
+    try:
+        df = influx_query_client.query_metrics_history(request.test_run_id, request.window_size)
+        if df.empty:
+            return {"anomalies": []}
+
+        # Train models if not trained yet
+        try:
+            anomaly_detector.load(request.test_run_id)
+        except FileNotFoundError:
+            if len(df) >= 10:
+                anomaly_detector.train(df, request.test_run_id)
+            else:
+                return {"anomalies": []}
+
+        X = anomaly_detector._prepare_features(df)
+        
+        if_preds = anomaly_detector.if_model.predict(X)
+        svm_preds = anomaly_detector.svm_model.predict(X)
+        decision_scores = anomaly_detector.if_model.decision_function(X)
+
+        anomalies = []
+        for idx in range(len(df)):
+            is_anom = (if_preds[idx] == -1) or (svm_preds[idx] == -1)
+            if is_anom:
+                prob = float(1.0 / (1.0 + np.exp(decision_scores[idx] * 10)))
+                ts = df.iloc[idx]["timestamp"]
+                ts_str = ts.isoformat() if hasattr(ts, 'isoformat') else str(ts)
+                
+                anomalies.append({
+                    "timestamp": ts_str,
+                    "type": "Performance Anomaly",
+                    "confidence": round(prob, 2),
+                    "message": f"Outlier latency of {df.iloc[idx]['avg_latency']:.1f}ms detected under concurrency of {int(df.iloc[idx]['active_users'])} VUs."
+                })
+        
+        return {"anomalies": anomalies}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -60,6 +60,11 @@ const TestRunSchema = new mongoose.Schema({
     failureStartsAt: { type: Number, default: 0 },
     recommendedCapacity: { type: Number, default: 0 },
     stepsCompleted: { type: Number, default: 0 }
+  },
+  advisor: {
+    recommendation: { type: String, default: 'HOLD' },
+    message: { type: String, default: '' },
+    actions: [{ type: String }]
   }
 }, {
   timestamps: true
