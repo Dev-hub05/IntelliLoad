@@ -1,0 +1,266 @@
+.ai-diagnostic-panel {
+  width: 100%;
+}
+
+.diagnostic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.ai-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  background: var(--accent-cyan-glow);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.diagnostic-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 900px) {
+  .diagnostic-grid {
+    grid-template-columns: 1.1fr 1fr;
+  }
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+/* Risk Meter */
+.risk-meter-container {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}
+
+.risk-level-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.risk-percentage {
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.risk-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.risk-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+.risk-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Load Advisor Rec */
+.advisor-rec-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+.advisor-rec-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.advisor-rec-badge.rec-SCALE_UP {
+  background: var(--accent-emerald-glow);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.advisor-rec-badge.rec-SCALE_DOWN {
+  background: var(--accent-coral-glow);
+  color: var(--accent-coral);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.advisor-rec-badge.rec-HOLD {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.advisor-rec-message {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.actions-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actions-list li {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* Bottlenecks Card */
+.bottlenecks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.bottleneck-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.bottleneck-row.primary {
+  background: rgba(0, 212, 255, 0.02);
+  border-color: rgba(0, 212, 255, 0.12);
+}
+
+.bottleneck-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.bottleneck-icon {
+  display: flex;
+  align-items: center;
+}
+
+.bottleneck-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.bottleneck-row.primary .bottleneck-name {
+  color: var(--text-primary);
+}
+
+.bottleneck-bar-container {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bottleneck-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+.bottleneck-score {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 40px;
+  text-align: right;
+}
+
+.explanation-box {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+}
+
+/* Anomaly Log Card */
+.anomalies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.anomaly-item {
+  display: grid;
+  grid-template-columns: 80px 1fr 140px;
+  gap: 16px;
+  padding: 10px 16px;
+  background: rgba(255, 107, 107, 0.02);
+  border: 1px solid rgba(255, 107, 107, 0.08);
+  border-radius: var(--radius-sm);
+  align-items: center;
+}
+
+.anomaly-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.anomaly-message {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.anomaly-confidence {
+  font-size: 0.75rem;
+  color: var(--accent-coral);
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Diagnostic Loading Card */
+.diagnostic-loading-card {
+  padding: 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}

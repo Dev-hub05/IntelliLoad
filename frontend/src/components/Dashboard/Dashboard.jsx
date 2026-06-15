@@ -7,6 +7,7 @@ import LatencyChart from './LatencyChart';
 import ThroughputChart from './ThroughputChart';
 import ErrorTrendChart from './ErrorTrendChart';
 import TestControls from '../TestRunner/TestControls';
+import AiDiagnosticPanel from '../Results/AiDiagnosticPanel';
 import { Play } from 'lucide-react';
 
 function Dashboard() {
@@ -80,10 +81,12 @@ function Dashboard() {
     });
 
     // Sync status if completed
-    if (testRun && testRun.status === 'running' && sseMetrics.totalRequests >= testRun.config.connections * testRun.config.duration) {
+    if (sseMetrics.analysisComplete) {
+      testService.getTestDetails(activeRunId).then(res => setTestRun(res.data));
+    } else if (testRun && testRun.status === 'running' && sseMetrics.totalRequests >= testRun.config.connections * testRun.config.duration) {
       testService.getTestDetails(activeRunId).then(res => setTestRun(res.data));
     }
-  }, [sseMetrics]);
+  }, [sseMetrics, activeRunId, testRun]);
 
   const handleStopTest = async () => {
     if (!activeRunId) return;
@@ -126,9 +129,14 @@ function Dashboard() {
             <ThroughputChart data={chartData} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
             <ErrorTrendChart data={chartData} />
           </div>
+
+          {/* AI/ML Diagnostics Report */}
+          {testRun && (testRun.status === 'completed' || testRun.status === 'stopped' || testRun.status === 'failed') && (
+            <AiDiagnosticPanel testRun={testRun} />
+          )}
         </>
       ) : (
         <div className="mock-page">
