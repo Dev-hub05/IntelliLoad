@@ -315,39 +315,6 @@ The diagram below details how data flows through IntelliLoad during a typical ru
 
 ---
 
-## ⚡ Quick Start
-
-### Prerequisites
-Make sure you have [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed on your machine.
-
-### Launching the Platform
-
-To build and launch all services (Frontend, Backend, ML, MongoDB, Redis, InfluxDB, and a mock test server):
-
-```bash
-docker-compose up --build
-```
-
-For a hot-reloaded development environment using volume mounts:
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-```
-
-### Port Mapping
-
-Once the services are active, you can access them at:
-
-| Service | Address |
-|:---|:---|
-| **Frontend Dashboard** | [http://localhost:5173](http://localhost:5173) |
-| **Backend API Server** | [http://localhost:3001](http://localhost:3001) |
-| **AI/ML Service** | [http://localhost:8000](http://localhost:8000) |
-| **InfluxDB UI** | [http://localhost:8086](http://localhost:8086) |
-| **Mock Test Server** | [http://localhost:3002](http://localhost:3002) |
-
----
-
 ## 📝 License & Contributing
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
