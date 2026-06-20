@@ -240,3 +240,120 @@ IntelliLoad is designed to address a wide spectrum of performance engineering ch
 
 ---
 
+## 🛠️ Technology Stack
+
+IntelliLoad's microservices architecture leverages standard modern technologies optimized for performance, scalability, and speed:
+
+### Frontend (Dashboard UI)
+* **React 18 & Vite:** Ultra-fast hot-reloading dev environment and lightweight production bundle.
+* **Recharts:** High-performance SVG charting library supporting real-time data streaming (using a 120-point rolling window).
+* **Framer Motion:** Micro-animations for high-fidelity interactive elements and transitions.
+* **Lucide React & Tailwind-style Glassmorphism CSS:** A clean, modern dark aesthetic with visual depth and glowing status alerts.
+
+### Backend (Orchestration & Generation)
+* **Node.js (v18+) & Express:** Single-threaded, event-driven architecture optimized for asynchronous routing and event emission.
+* **Autocannon:** A high-concurrency HTTP load generator that is significantly faster than traditional tools (like JMeter or Locust) and consumes minimal CPU.
+* **Server-Sent Events (SSE):** Provides a unidirectional, real-time push channel to stream raw ticks directly to the React dashboard.
+* **BullMQ & Redis:** A robust, Redis-backed persistent job queue that handles the ML analysis asynchronously to avoid blocking the main server thread.
+
+### AI/ML Service (Analytics & Inference)
+* **Python 3.11 & FastAPI:** High-performance async Python backend supporting typed validation via Pydantic schemas.
+* **XGBoost & scikit-learn:**
+  * **Anomaly Detection:** Ensemble of *Isolation Forest* and *One-Class SVM* models evaluating timeseries drift.
+  * **Failure Prediction:** A three-phase progressive system (Rule-based heuristics ➔ Isolation Forest proxy scores ➔ Supervised XGBoost binary classification).
+  * **Root Cause Attribution:** Numerical curve-fitting (polyfit) and metric volatility coefficient analyses mapping database locks, network plateaus, CPU/memory pressure, or concurrency limits.
+
+### Infrastructure & Storage
+* **MongoDB:** Document store for user test configs, historical runs, and postman API collection schemas.
+* **InfluxDB (v2.7):** Time-series database storing nanosecond-precision metrics telemetry.
+* **Redis:** Acts as both the BullMQ queue broker and a fast cache for live metrics snapshots.
+* **Docker & Docker Compose:** Standardized environments with volume mappings for database persistence and ML model serialization.
+
+---
+
+## 🔄 Platform Workflow
+
+The diagram below details how data flows through IntelliLoad during a typical run:
+
+```
+┌──────────────┐          1. Configure & Run          ┌──────────────┐
+│  Dashboard   │─────────────────────────────────────►│ Backend API  │
+│ (React/Vite) │◄─────────────────────────────────────│  (Express)   │
+└──────────────┘          4. SSE Live Stream          └──────┬───────┘
+       ▲                                                     │
+       │                                                     │ 2. Spawns
+       │                                                     ▼
+       │  5. Load Report                               ┌──────────────┐
+       │                                               │ Autocannon   │
+       │                                               │ Load Engine  │
+       │                                               └──────┬───────┘
+       │                                                      │
+       │                                                      │ 3. Push Ticks
+       │                                                      ▼
+┌──────┴───────┐         7. Trigger Analysis           ┌──────────────┐
+│   MongoDB    │◄──────────────────────────────────────│   Metrics    │
+│  (Database)  │                                       │  Collector   │
+└──────────────┘                                       └──────┬───────┘
+       ▲                                                      │
+       │ 9. Save Results                                      │ Write Ticks
+       │                                                      ▼
+┌──────┴───────┐          8. Query Telemetry           ┌──────────────┐
+│  ML Service  │─────────────────────────────────────►│  InfluxDB    │
+│  (FastAPI)   │                                       │ (TimeSeries) │
+└──────────────┘                                       └──────────────┘
+```
+
+1. **User Action:** The user configures load parameters or imports a Postman collection, then clicks **Run**.
+2. **Orchestration:** The Backend API initializes the test state and instantiates `autocannon`.
+3. **Telemetry Collection:** As traffic runs, the `MetricsCollector` captures throughput, latency percentiles, and errors.
+4. **Real-Time Stream:** These metrics are pushed instantly to the user's dashboard via Server-Sent Events (SSE) and written into InfluxDB.
+5. **Autocannon Completion:** Once the test duration completes, autocannon yields a final summary structure which is saved to MongoDB.
+6. **ML Pipeline:** The backend schedules an asynchronous job on Redis (BullMQ).
+7. **ML Inference:** The background worker triggers the FastAPI ML Service, which queries the timeseries data from InfluxDB.
+8. **Results Persistence:** The ML models detect anomalies, predict failure probability, isolate root causes, and write the insights back to MongoDB.
+9. **UI Update:** The dashboard is notified of completion, displaying the interactive AI Diagnostic Panel with tailored recommendations.
+
+---
+
+## ⚡ Quick Start
+
+### Prerequisites
+Make sure you have [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed on your machine.
+
+### Launching the Platform
+
+To build and launch all services (Frontend, Backend, ML, MongoDB, Redis, InfluxDB, and a mock test server):
+
+```bash
+docker-compose up --build
+```
+
+For a hot-reloaded development environment using volume mounts:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+### Port Mapping
+
+Once the services are active, you can access them at:
+
+| Service | Address |
+|:---|:---|
+| **Frontend Dashboard** | [http://localhost:5173](http://localhost:5173) |
+| **Backend API Server** | [http://localhost:3001](http://localhost:3001) |
+| **AI/ML Service** | [http://localhost:8000](http://localhost:8000) |
+| **InfluxDB UI** | [http://localhost:8086](http://localhost:8086) |
+| **Mock Test Server** | [http://localhost:3002](http://localhost:3002) |
+
+---
+
+## 📝 License & Contributing
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+Contributions are welcome! Please open an issue or submit a pull request with any improvements.
+
+---
+
+
