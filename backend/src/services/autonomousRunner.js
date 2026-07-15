@@ -1,4 +1,5 @@
 const autocannon = require('autocannon');
+const axios = require('axios');
 const EventEmitter = require('events');
 const TestRun = require('../models/TestRun');
 const { expandTemplate } = require('./templateEngine');
@@ -18,8 +19,7 @@ class AutonomousRunnerService extends EventEmitter {
     const testId = testRun._id.toString();
     const emitter = new EventEmitter();
     
-    // Ramping steps (VUs / connections)
-    const steps = [10, 25, 50, 100, 150, 200, 250, 300, 400, 500];
+    // Ramping steps config
     const stepDuration = 10; // seconds per step
     const latencyThreshold = 3000; // ms average latency threshold for failure
     const errorThresholdRate = 10; // % error rate threshold for failure
@@ -42,12 +42,15 @@ class AutonomousRunnerService extends EventEmitter {
 
     // Start ramping loop async
     const runRampingLoop = async () => {
-      for (let i = 0; i < steps.length; i++) {
-        if (state.aborted) break;
+      let connections = 10; // Start at 10 VUs
+      let stepCount = 0;
+      const maxSteps = 10;
+      let previousConnections = 0;
 
-        const connections = steps[i];
+      while (stepCount < maxSteps && !state.aborted) {
         state.activeUsers = connections;
-        console.log(`[Autonomous Ramping] Starting Step ${i + 1}/${steps.length} with ${connections} VUs`);
+        stepCount++;
+        console.log(`[Autonomous Ramping] Starting Step ${stepCount} with ${connections} VUs`);
 
         try {
           const stepResult = await this.executeStep(testRun, connections, stepDuration, emitter, testId, state);
@@ -61,20 +64,69 @@ class AutonomousRunnerService extends EventEmitter {
 
           console.log(`[Autonomous Step Result] Concurrency: ${connections} VUs | Avg Latency: ${avgLatency.toFixed(1)}ms | Error Rate: ${errorRate.toFixed(1)}%`);
 
-          if (errorRate > errorThresholdRate || avgLatency > latencyThreshold) {
+          // Query ML Service for dynamic recommendations and failure predictions
+          let suggestedConnections = connections;
+          let nextAction = 'HOLD';
+          try {
+            const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
+            const avgMetrics = {
+              avg_latency: avgLatency,
+              p95_latency: stepResult.latency.p95 || avgLatency,
+              throughput: stepResult.requests.average || 0,
+              error_rate: errorRate,
+              active_users: connections
+            };
+            
+            // 1. Predict failure risk
+            const predictionRes = await axios.post(`${ML_SERVICE_URL}/ml/predict/failure`, {
+              test_run_id: testId,
+              current_metrics: avgMetrics,
+              historical_runs_count: 0
+            });
+            const failureResult = predictionRes.data;
+
+            // 2. Get Advisor recommendations
+            const advisorRes = await axios.post(`${ML_SERVICE_URL}/ml/advisor/recommend`, {
+              current_metrics: avgMetrics,
+              failure_prediction: failureResult,
+              root_cause: { primary_cause: 'none', scores: {} }
+            });
+            const advisorResult = advisorRes.data;
+            
+            suggestedConnections = advisorResult.suggested_connections || connections;
+            nextAction = advisorResult.recommendation || 'HOLD';
+            console.log(`[Autonomous ML Advisor] Recommendation: ${nextAction} | Suggested Connections: ${suggestedConnections} VUs`);
+          } catch (mlErr) {
+            console.error('[Autonomous ML Advisor Error] Failed to get dynamic ML suggestions, falling back to heuristics:', mlErr.message);
+            // Fallback heuristics: static progression
+            const fallbackSteps = [10, 40, 80, 150, 260, 350, 450, 500];
+            const nextIdx = fallbackSteps.indexOf(connections) + 1;
+            suggestedConnections = nextIdx < fallbackSteps.length ? fallbackSteps[nextIdx] : connections;
+          }
+
+          if (errorRate > errorThresholdRate || avgLatency > latencyThreshold || nextAction === 'SCALE_DOWN') {
             // Breaking point detected!
             console.log(`[Autonomous Ramping] BREAKING POINT REACHED at ${connections} VUs!`);
             state.failureStartsAt = connections;
-            state.maxStableUsers = i > 0 ? steps[i - 1] : 0;
+            state.maxStableUsers = previousConnections || 0;
             break;
           } else {
             // Stable step
             state.maxStableUsers = connections;
+            previousConnections = connections;
+            
+            // Move to next suggested connections level
+            if (suggestedConnections <= connections && nextAction === 'SCALE_UP') {
+              // Ensure progress if advisor recommended scale up but connections didn't change
+              connections = Math.min(500, connections + 50);
+            } else {
+              connections = suggestedConnections;
+            }
           }
         } catch (err) {
           console.error(`[Autonomous Ramping] Step failed at ${connections} VUs:`, err.message);
           state.failureStartsAt = connections;
-          state.maxStableUsers = i > 0 ? steps[i - 1] : 0;
+          state.maxStableUsers = previousConnections || 0;
           break;
         }
       }

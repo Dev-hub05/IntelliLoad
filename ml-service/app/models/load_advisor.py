@@ -9,6 +9,7 @@ class LoadAdvisor:
         
         avg_latency = float(current_metrics.get("avg_latency", 0))
         error_rate = float(current_metrics.get("error_rate", 0))
+        active_users = float(current_metrics.get("active_users", 10))
 
         recommendation = "HOLD"
         message = "Metrics are stable. Hold traffic levels constant to evaluate baseline stability."
@@ -39,10 +40,27 @@ class LoadAdvisor:
             message = "Holding traffic constant. Minor latency volatility observed."
             actions.append("Monitor latency values for the next 15 seconds.")
 
+        # Calculate suggested connections dynamically based on recommendation
+        suggested_connections = active_users
+        if recommendation == "SCALE_UP":
+            if active_users < 20:
+                suggested_connections = 40
+            elif active_users < 50:
+                suggested_connections = 80
+            elif active_users < 100:
+                suggested_connections = 150
+            elif active_users < 200:
+                suggested_connections = 260
+            else:
+                suggested_connections = min(500, int(active_users * 1.5))
+        elif recommendation == "SCALE_DOWN":
+            suggested_connections = max(10, int(active_users * 0.7))
+
         return {
             "recommendation": recommendation,
             "message": message,
             "actions": actions,
+            "suggested_connections": int(suggested_connections),
             "input_risk_level": risk,
             "input_primary_bottleneck": primary_cause
         }

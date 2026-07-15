@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   ShieldAlert, ShieldCheck, AlertTriangle, Cpu, Database, 
-  Network, HardDrive, Share2, HelpCircle, CheckCircle, RefreshCw 
+  Network, HardDrive, Share2, HelpCircle, CheckCircle, RefreshCw, Settings 
 } from 'lucide-react';
 import './AiDiagnosticPanel.css';
 
@@ -50,6 +50,7 @@ function AiDiagnosticPanel({ testRun }) {
       case 'network': return <Network size={18} />;
       case 'memory': return <HardDrive size={18} />;
       case 'concurrency': return <Share2 size={18} />;
+      case 'application': return <Settings size={18} />;
       default: return <HelpCircle size={18} />;
     }
   };

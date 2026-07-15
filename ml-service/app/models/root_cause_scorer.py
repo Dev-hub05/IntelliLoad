@@ -40,7 +40,8 @@ class RootCauseScorer:
             'network': 0.0,
             'cpu': 0.0,
             'memory': 0.0,
-            'concurrency': 0.0
+            'concurrency': 0.0,
+            'application': 0.0
         }
 
         if len(metrics_history) < 5:
@@ -109,6 +110,12 @@ class RootCauseScorer:
         if sudden_error_cliff:
             scores['concurrency'] += 0.5
 
+        # Application: High error rate not matching sudden socket cliff, or general app response delays
+        if error_rate[-1] > 2.0 and not sudden_error_cliff:
+            scores['application'] += 0.5
+        elif 'errorRate' in df.columns and df['errorRate'].mean() > 5.0:
+            scores['application'] += 0.3
+
         # Normalize scores to sum to 1.0
         total = sum(scores.values())
         if total > 0:
@@ -156,6 +163,13 @@ class RootCauseScorer:
                 "Increase file descriptor caps on the host machine.",
                 "Increase server keep-alive and backlog connection values.",
                 "Configure rate limit parameters."
+            ]
+        elif primary == 'application':
+            explanation = f"High confidence ({int(confidence*100)}%) of application-level errors or runtime bottlenecks. Unhandled exceptions or route controller blockage detected."
+            recommendations = [
+                "Optimize application code logic and event loop blocks.",
+                "Verify error handling middleware response codes.",
+                "Review server-side stack trace logs to resolve exception paths."
             ]
         else:
             explanation = "Stable profile metrics. No anomalies or resource bottlenecks detected."
